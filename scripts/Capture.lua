@@ -4,11 +4,12 @@
 -- Per tile: move the camera, wait, render an uncompressed DDS (~0.1 s; a PNG takes ~1.4 s to encode),
 -- write the .done marker, check for cancel.
 -- Everything that touches the game goes through `game` (AutoDriveEditorLink.lua; a fake in the tests):
---   prepare(pictures)              hide HUD, light, distance factors, ortho camera
+--   prepare(pictures)              hide HUD, time and weather, distance factors, ortho camera
 --   moveCamera(x, z, altitude)     returns groundY
 --   render(path, res, mode)        returns true on success
 --   writeMarker(path), fileExists(path), createFolder(path), now() (seconds)
---   restore()                      camera, HUD, distance factors; must cope with a half-done prepare
+--   restore()                      camera, HUD, distance factors, time and weather; must cope with
+--                                  a half-done prepare
 --   writeResult(id, status, message, tiles)
 ADELCapture = {}
 ADELCapture.__index = ADELCapture
@@ -89,6 +90,14 @@ function ADELCapture:step()
     else
         self:moveTo(self.index + 1)
     end
+end
+
+local DAY_MS = 24 * 60 * 60 * 1000
+
+-- The day time (ms) to set after a capture: the time before it plus the game time that passed
+-- while capturing. The clock kept running from setMs, the time the capture set.
+function ADELCapture.restoredDayTime(oldMs, setMs, nowMs)
+    return (oldMs + (nowMs - setMs) % DAY_MS) % DAY_MS
 end
 
 -- Restores the game first (also when something broke), then writes the result.

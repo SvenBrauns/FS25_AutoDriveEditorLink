@@ -47,7 +47,9 @@ is closed or no map is loaded.
   - `altitude`: camera height above the ground at the tile centre, m.
   - `firstWaitMs`, `waitMs`: real time between moving the camera and rendering, for the first and
     every further tile.
-  - `dayTime` (hour), `weather` (`SUN`): set once at the start. They stay set after the capture.
+  - `dayTime` (hour), `weather` (`SUN`): set once at the start. At the end, also on cancel and
+    error, the mod sets the weather type back and the time to the old time plus the time the
+    capture took.
 - `tile`: grid cell `col`, `row` and its centre `x`, `z`. Rendered in the order given.
 
 During a capture the mod hides the HUD, sets the five distance factors to fixed values (object

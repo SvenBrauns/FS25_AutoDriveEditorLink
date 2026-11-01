@@ -156,3 +156,10 @@ test("capture: progress counts finished tiles", function()
     eq(done, 1, "done")
     eq(total, 3, "total")
 end)
+
+test("capture: restored day time is the old time plus the time the capture took", function()
+    local hour = 60 * 60 * 1000
+    eq(ADELCapture.restoredDayTime(8 * hour, 12 * hour, 13 * hour), 9 * hour, "one hour later")
+    eq(ADELCapture.restoredDayTime(23 * hour, 12 * hour, 14 * hour), 1 * hour, "past midnight")
+    eq(ADELCapture.restoredDayTime(8 * hour, 23 * hour, 1 * hour), 10 * hour, "capture over midnight")
+end)

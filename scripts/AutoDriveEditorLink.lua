@@ -38,6 +38,37 @@ local function log(fmt, ...)
     print(string.format("AutoDriveEditorLink: " .. fmt, ...))
 end
 
+-- Name of the weather type now (e.g. SUN, RAIN), nil if the game does not tell.
+local function currentWeatherName(environment)
+    local ok, name = pcall(function()
+        local index = environment.weather:getCurrentWeatherType()
+        return g_weatherTypeManager:getWeatherTypeByIndex(index).name
+    end)
+    return ok and name or nil
+end
+
+-- After a capture: the old time plus the time the capture took, and the old weather type.
+-- Each part on its own, so a failing one does not keep the other from being restored.
+local function restoreTimeAndWeather(saved)
+    local environment = g_currentMission.environment
+    if saved.dayTime ~= nil and saved.setDayTime ~= nil then
+        local ok, err = pcall(function()
+            local dayTime = ADELCapture.restoredDayTime(saved.dayTime, saved.setDayTime, environment.dayTime)
+            environment:setEnvironmentTime(environment.currentMonotonicDay, environment.currentDay, dayTime,
+                environment.daysPerPeriod, false)
+        end)
+        if not ok then
+            log("time not restored: %s", tostring(err))
+        end
+    end
+    if saved.weather ~= nil then
+        local ok, err = pcall(environment.weather.consoleCommandWeatherSet, environment.weather, saved.weather)
+        if not ok then
+            log("weather not restored: %s", tostring(err))
+        end
+    end
+end
+
 -- The game for ADELCapture (see Capture.lua). `saved` holds what restore() puts back.
 local Game = {}
 
@@ -53,8 +84,12 @@ function Game:prepare(pictures)
         saved.coeffs[i] = coeff.get()
         coeff.set(ADEL.coeffs[coeff.kind])
     end
-    mission.environment:consoleCommandSetDayTime(pictures.dayTime)
-    mission.environment.weather:consoleCommandWeatherSet(pictures.weather)
+    local environment = mission.environment
+    saved.dayTime = environment.dayTime
+    saved.weather = currentWeatherName(environment)
+    environment:consoleCommandSetDayTime(pictures.dayTime)
+    environment.weather:consoleCommandWeatherSet(pictures.weather)
+    saved.setDayTime = environment.dayTime
 
     local cam = createCamera("AutoDriveEditorLinkCamera", math.rad(60), 1, pictures.altitude + 1000)
     saved.cam = cam
@@ -93,6 +128,7 @@ function Game:restore()
     if saved.hud ~= nil then
         g_currentMission.hud:setIsVisible(saved.hud)
     end
+    restoreTimeAndWeather(saved)
 end
 
 function Game:moveCamera(x, z, altitude)
