@@ -28,3 +28,6 @@ lua tests/run.lua
   block of the tile grid around x, z. The mod picks it up within a second.
 - `adelCoeff [objects] [foliage]` shows or sets the distance factors used during captures
   (default 2.0 and 0) until the game is restarted.
+- `adelTestReload <file>` loads an AutoDrive route file (root `routeExport`) into the running
+  game, as the RoutesManager's import does. `<file>` is a full path or a file name in
+  `modSettings/FS25_AutoDriveEditorLink/`.

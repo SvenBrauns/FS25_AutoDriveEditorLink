@@ -18,11 +18,20 @@ function ADELRequest.parse(get)
     end
     local request = {id = id, type = get("request#type"), map = get("request#map"),
         savegame = tonumber(get("request#savegame"))}
-    if request.type ~= "pictures" then
+    if request.type ~= "pictures" and request.type ~= "reload" then
         return nil, "unknown request type " .. tostring(request.type), id
     end
     if request.map == nil or request.savegame == nil then
         return nil, "request without map or savegame", id
+    end
+    if request.type == "reload" then
+        -- A bare file name in the exchange folder, so the mod reads no files elsewhere.
+        local file = get("request.reload#file")
+        if file == nil or file == "" or file:find("[/\\:]") or file:find("%.%.") then
+            return nil, "reload#file must be a file name in the exchange folder", id
+        end
+        request.reload = {file = file}
+        return request
     end
 
     local pictures = {tiles = {}}

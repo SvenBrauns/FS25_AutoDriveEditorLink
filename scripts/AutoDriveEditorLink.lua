@@ -117,12 +117,19 @@ function Game:now()
 end
 
 -- result_<id>.xml, then the empty result_<id>.done last.
-function Game:writeResult(id, status, message, tiles)
+function Game:writeResult(id, status, message, tiles, reload)
     local xml = createXMLFile("ADELResult", string.format("%sresult_%d.xml", ADEL.dir, id), "result")
     setXMLString(xml, "result#format", ADEL.FORMAT)
     setXMLInt(xml, "result#id", id)
     setXMLString(xml, "result#status", status)
     setXMLString(xml, "result#message", message)
+    if reload ~= nil then
+        setXMLInt(xml, "result.reload#nodes", reload.nodes)
+        setXMLInt(xml, "result.reload#markers", reload.markers)
+        setXMLInt(xml, "result.reload#groups", reload.groups)
+        setXMLFloat(xml, "result.reload#readSec", reload.readSec)
+        setXMLFloat(xml, "result.reload#uploadSec", reload.uploadSec)
+    end
     for i, tile in ipairs(tiles) do
         local key = string.format("result.tile(%d)", i - 1)
         setXMLInt(xml, key .. "#col", tile.col)
@@ -145,6 +152,8 @@ function ADEL:loadMap()
     addConsoleCommand("adelCoeff", "Distance factors for captures", "consoleCoeff", self, "objects; foliage")
     addConsoleCommand("adelTestCapture", "Write a request for n x n picture tiles around x z", "consoleTestCapture",
         self, "x; z; n; mPerPx; waitMs")
+    addConsoleCommand("adelTestReload", "Load a route file (routeExport) into the running game", "consoleTestReload",
+        self, "path")
 end
 
 function ADEL:deleteMap()
@@ -154,6 +163,7 @@ function ADEL:deleteMap()
     end
     removeConsoleCommand("adelCoeff")
     removeConsoleCommand("adelTestCapture")
+    removeConsoleCommand("adelTestReload")
 end
 
 function ADEL:update(dt)
@@ -230,9 +240,68 @@ function ADEL:checkRequest()
             tostring(info.savegameIndex)), {})
         return
     end
+    if request.type == "reload" then
+        local info, message = self:reload(self.dir .. request.reload.file)
+        Game:writeResult(id, info ~= nil and "done" or "error", message or "", {}, info)
+        return
+    end
     log("request %d: %d tiles", id, #request.pictures.tiles)
     self.capture = ADELCapture.new(Game, request, self.dir)
     self.capture:start()
+end
+
+-- Loads a route-format file (root routeExport) into the running game, as the RoutesManager's import
+-- does. AutoDrive's functions live in its mod environment FS25_AutoDrive. Returns counts and real
+-- times in seconds, or nil and an error message.
+function ADEL:reload(path)
+    local env = FS25_AutoDrive
+    if env == nil or env.AutoDrive == nil or env.AutoDriveRoutesUploadEvent == nil then
+        return nil, "AutoDrive not found"
+    end
+    if not fileExists(path) then
+        return nil, "file not found: " .. path
+    end
+    local start = getTimeSec()
+    local xml = loadXMLFile("ADELReload", path)
+    if xml == nil or xml == 0 then
+        return nil, "cannot read " .. path
+    end
+    local ok, wayPoints, mapMarkers, groups = pcall(env.AutoDrive.readGraphFromXml, xml, "routeExport")
+    delete(xml)
+    if not ok then
+        return nil, "cannot read the network: " .. tostring(wayPoints)
+    end
+    local read = getTimeSec()
+    local sent, message = pcall(env.AutoDriveRoutesUploadEvent.sendEvent, wayPoints, mapMarkers, groups)
+    if not sent then
+        return nil, "upload failed: " .. tostring(message)
+    end
+    local info = {nodes = #wayPoints, markers = #mapMarkers, groups = 0, readSec = read - start,
+        uploadSec = getTimeSec() - read}
+    for _ in pairs(groups) do
+        info.groups = info.groups + 1
+    end
+    log("reloaded %s: %d nodes, %d markers, %d groups, read %.2f s, upload %.2f s", path, info.nodes, info.markers,
+        info.groups, info.readSec, info.uploadSec)
+    return info
+end
+
+-- Hand test without the editor. A bare file name is taken from the exchange folder. The console
+-- splits arguments at spaces ("My Games"), so they are joined again.
+function ADEL:consoleTestReload(...)
+    local path = table.concat({...}, " ")
+    if path == "" then
+        return "usage: adelTestReload <route file (routeExport): full path or a file name in the exchange folder>"
+    end
+    if not path:find("[/\\:]") then
+        path = self.dir .. path
+    end
+    local info, message = self:reload(path)
+    if info == nil then
+        return "AutoDriveEditorLink: reload failed: " .. message
+    end
+    return string.format("AutoDriveEditorLink: reloaded %d nodes, %d markers, %d groups in %.2f + %.2f s", info.nodes,
+        info.markers, info.groups, info.readSec, info.uploadSec)
 end
 
 function ADEL:consoleCoeff(objects, foliage)
