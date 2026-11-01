@@ -1,5 +1,6 @@
 # Zips the mod into the game's mods folder. Entry names use "/" (Compress-Archive in
 # Windows PowerShell 5.1 writes "\", and the game then does not find scripts/...).
+$ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $mods = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "My Games\FarmingSimulator2025\mods"
 $zip = Join-Path $mods "FS25_AutoDriveEditorLink.zip"

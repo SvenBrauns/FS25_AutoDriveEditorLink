@@ -48,9 +48,10 @@ is closed or no map is loaded.
   - `dayTime` (hour), `weather` (`SUN`): set once at the start. They stay set after the capture.
 - `tile`: grid cell `col`, `row` and its centre `x`, `z`. Rendered in the order given.
 
-During a capture the mod hides the HUD, sets all five distance factors (object, foliage view,
-foliage LOD, LOD, terrain LOD) to a fixed value (2.0), and puts camera, HUD and factors back at
-the end, also on cancel and error.
+During a capture the mod hides the HUD, sets the five distance factors to fixed values (object
+draw distance, LOD, terrain LOD: 2.0; foliage view and foliage LOD: 0.01, so foliage LOD bands do
+not draw rings around the camera), and puts camera, HUD and factors back at the end, also on
+cancel and error.
 
 ## Per tile (mod)
 

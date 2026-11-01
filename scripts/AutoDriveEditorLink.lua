@@ -6,15 +6,18 @@ ADEL.modName = g_currentModName
 ADEL.dir = getUserProfileAppPath() .. "modSettings/FS25_AutoDriveEditorLink/"
 ADEL.FORMAT = "1"
 ADEL.POLL_MS = 1000
-ADEL.coeff = 2.0 -- all five distance factors during a capture (game range 0.5-2.0); adelCoeff changes it
+-- Distance factors during a capture; adelCoeff changes them. Objects (buildings, trees, terrain) far and
+-- detailed; foliage almost off, else its LOD bands draw rings around the camera (they follow ground
+-- distance, so a higher camera does not help). The game menu allows 0.5-2.0; the engine takes less.
+ADEL.coeffs = {objects = 2.0, foliage = 0.01}
 
 -- The game's graphics settings that decide how far things are drawn and in how much detail.
 local COEFFS = {
-    {get = getViewDistanceCoeff, set = setViewDistanceCoeff},
-    {get = getFoliageViewDistanceCoeff, set = setFoliageViewDistanceCoeff},
-    {get = getFoliageLODDistanceCoeff, set = setFoliageLODDistanceCoeff},
-    {get = getLODDistanceCoeff, set = setLODDistanceCoeff},
-    {get = getTerrainLODDistanceCoeff, set = setTerrainLODDistanceCoeff},
+    {kind = "objects", get = getViewDistanceCoeff, set = setViewDistanceCoeff},
+    {kind = "foliage", get = getFoliageViewDistanceCoeff, set = setFoliageViewDistanceCoeff},
+    {kind = "foliage", get = getFoliageLODDistanceCoeff, set = setFoliageLODDistanceCoeff},
+    {kind = "objects", get = getLODDistanceCoeff, set = setLODDistanceCoeff},
+    {kind = "objects", get = getTerrainLODDistanceCoeff, set = setTerrainLODDistanceCoeff},
 }
 
 local function log(fmt, ...)
@@ -34,7 +37,7 @@ function Game:prepare(pictures)
     saved.coeffs = {}
     for i, coeff in ipairs(COEFFS) do
         saved.coeffs[i] = coeff.get()
-        coeff.set(ADEL.coeff)
+        coeff.set(ADEL.coeffs[coeff.kind])
     end
     mission.environment:consoleCommandSetDayTime(pictures.dayTime)
     mission.environment.weather:consoleCommandWeatherSet(pictures.weather)
@@ -48,7 +51,11 @@ function Game:prepare(pictures)
     g_cameraManager:addCamera(cam, nil, false)
     saved.camAdded = true
     g_cameraManager:setActiveCamera(cam)
-    log("capture prepared: distance factors %.2f (were %s)", ADEL.coeff, table.concat(saved.coeffs, ", "))
+    local now = {}
+    for i, coeff in ipairs(COEFFS) do
+        now[i] = string.format("%.3f", coeff.get())
+    end
+    log("capture prepared: distance factors %s (were %s)", table.concat(now, ", "), table.concat(saved.coeffs, ", "))
 end
 
 function Game:restore()
@@ -135,7 +142,7 @@ function ADEL:loadMap()
     local mod = g_modManager:getModByName(self.modName)
     self.modVersion = mod ~= nil and mod.version or "?"
     self.timer, self.revision = 0, 0
-    addConsoleCommand("adelCoeff", "Distance factor (0.5-2.0) for captures", "consoleCoeff", self, "value")
+    addConsoleCommand("adelCoeff", "Distance factors for captures", "consoleCoeff", self, "objects; foliage")
     addConsoleCommand("adelTestCapture", "Write a request for n x n picture tiles around x z", "consoleTestCapture",
         self, "x; z; n; mPerPx; waitMs")
 end
@@ -228,12 +235,11 @@ function ADEL:checkRequest()
     self.capture:start()
 end
 
-function ADEL:consoleCoeff(value)
-    value = tonumber(value)
-    if value ~= nil then
-        self.coeff = math.max(0.5, math.min(2.0, value))
-    end
-    return string.format("AutoDriveEditorLink: distance factor for captures %.2f", self.coeff)
+function ADEL:consoleCoeff(objects, foliage)
+    self.coeffs.objects = tonumber(objects) or self.coeffs.objects
+    self.coeffs.foliage = tonumber(foliage) or self.coeffs.foliage
+    return string.format("AutoDriveEditorLink: distance factors for captures: objects %.3f, foliage %.3f",
+        self.coeffs.objects, self.coeffs.foliage)
 end
 
 -- Hand test without the editor: a request for an n x n block of the real tile grid around x z.
