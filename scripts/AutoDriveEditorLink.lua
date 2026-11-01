@@ -271,16 +271,17 @@ function ADEL:reload(path)
     if not ok then
         return nil, "cannot read the network: " .. tostring(wayPoints)
     end
+    -- Counted before the upload: AutoDrive adds its debug markers to the same tables.
+    local info = {nodes = #wayPoints, markers = #mapMarkers, groups = 0, readSec = getTimeSec() - start}
+    for _ in pairs(groups) do
+        info.groups = info.groups + 1
+    end
     local read = getTimeSec()
     local sent, message = pcall(env.AutoDriveRoutesUploadEvent.sendEvent, wayPoints, mapMarkers, groups)
     if not sent then
         return nil, "upload failed: " .. tostring(message)
     end
-    local info = {nodes = #wayPoints, markers = #mapMarkers, groups = 0, readSec = read - start,
-        uploadSec = getTimeSec() - read}
-    for _ in pairs(groups) do
-        info.groups = info.groups + 1
-    end
+    info.uploadSec = getTimeSec() - read
     log("reloaded %s: %d nodes, %d markers, %d groups, read %.2f s, upload %.2f s", path, info.nodes, info.markers,
         info.groups, info.readSec, info.uploadSec)
     return info
