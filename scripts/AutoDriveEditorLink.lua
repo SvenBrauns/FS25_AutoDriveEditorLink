@@ -330,23 +330,32 @@ end
 
 -- Development: runs the scripts again from the mod folder, so changed functions apply without
 -- leaving the savegame. A zipped mod is read from the zip the game loaded, so edits need the folder.
+-- The engine runs each file path only once (a second source() of it does nothing), so each file is
+-- copied to a new name in the exchange folder, run from there and deleted.
 function ADEL:consoleReloadScripts()
     if self.capture ~= nil then
         return "AutoDriveEditorLink: not during a capture"
     end
+    local env = getfenv(0)
+    local copyFile, deleteFile = env.copyFile or copyFile, env.deleteFile or deleteFile
     local before = self.loads
+    self.reloadCount = (self.reloadCount or 0) + 1
     for _, file in ipairs(SCRIPTS) do
-        local ok, message = pcall(source, self.modDir .. file)
+        local copy = string.format("%sreload%s_%d_%s", self.dir, getDate("%H%M%S"), self.reloadCount,
+            file:match("[^/]+$"))
+        copyFile(self.modDir .. file, copy, true)
+        local ok, message = pcall(source, copy)
+        deleteFile(copy)
         if not ok then
             return string.format("AutoDriveEditorLink: %s failed: %s", file, tostring(message))
         end
     end
     if self.loads == before then
-        return "AutoDriveEditorLink: the scripts did not run in the mod's environment, nothing changed"
+        return "AutoDriveEditorLink: the scripts did not run again, see log.txt"
     end
     self:removeConsoleCommands()
     self:addConsoleCommands()
-    return "AutoDriveEditorLink: scripts reloaded from " .. self.modDir
+    return "AutoDriveEditorLink: scripts reloaded"
 end
 
 function ADEL:consoleCoeff(objects, foliage)

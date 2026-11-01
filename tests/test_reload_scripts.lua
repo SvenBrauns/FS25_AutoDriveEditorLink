@@ -6,7 +6,12 @@ test("reload scripts: listener added once, state kept, commands added again", fu
     addModEventListener = function() listeners = listeners + 1 end
     addConsoleCommand = function(name) table.insert(added, name) end
     removeConsoleCommand = function(name) table.insert(removed, name) end
-    source = dofile
+    -- The copies exist only as a name: source() runs the original, deleteFile() forgets the name.
+    local copies = {}
+    copyFile = function(from, to) copies[to] = from end
+    deleteFile = function(path) copies[path] = nil end
+    source = function(path) dofile(copies[path]) end
+    getDate = function() return "153300" end
     AutoDriveEditorLink = nil
 
     dofile("scripts/AutoDriveEditorLink.lua")
@@ -23,6 +28,7 @@ test("reload scripts: listener added once, state kept, commands added again", fu
     eq(adel.modName, "FS25_AutoDriveEditorLink", "modName")
     eq(#removed, #added / 2, "removed")
     eq(added[#added], "adelReloadScripts", "last command")
+    eq(next(copies), nil, "copies deleted")
 end)
 
 test("reload scripts: not during a capture", function()
