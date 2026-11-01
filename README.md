@@ -27,4 +27,4 @@ lua tests/run.lua
 - `adelTestCapture x z [n=1] [mPerPx=0.25] [waitMs=500]` writes a `request.xml` for an n × n
   block of the tile grid around x, z. The mod picks it up within a second.
 - `adelCoeff [objects] [foliage]` shows or sets the distance factors used during captures
-  (default 2.0 and 0.01) until the game is restarted.
+  (default 2.0 and 0) until the game is restarted.

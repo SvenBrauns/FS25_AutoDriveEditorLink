@@ -7,9 +7,9 @@ ADEL.dir = getUserProfileAppPath() .. "modSettings/FS25_AutoDriveEditorLink/"
 ADEL.FORMAT = "1"
 ADEL.POLL_MS = 1000
 -- Distance factors during a capture; adelCoeff changes them. Objects (buildings, trees, terrain) far and
--- detailed; foliage almost off, else its LOD bands draw rings around the camera (they follow ground
+-- detailed; foliage off (0), else its LOD bands draw rings around the camera (they follow ground
 -- distance, so a higher camera does not help). The game menu allows 0.5-2.0; the engine takes less.
-ADEL.coeffs = {objects = 2.0, foliage = 0.01}
+ADEL.coeffs = {objects = 2.0, foliage = 0}
 
 -- The game's graphics settings that decide how far things are drawn and in how much detail.
 local COEFFS = {

@@ -49,7 +49,7 @@ is closed or no map is loaded.
 - `tile`: grid cell `col`, `row` and its centre `x`, `z`. Rendered in the order given.
 
 During a capture the mod hides the HUD, sets the five distance factors to fixed values (object
-draw distance, LOD, terrain LOD: 2.0; foliage view and foliage LOD: 0.01, so foliage LOD bands do
+draw distance, LOD, terrain LOD: 2.0; foliage view and foliage LOD: 0, so foliage LOD bands do
 not draw rings around the camera), and puts camera, HUD and factors back at the end, also on
 cancel and error.
 
