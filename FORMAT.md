@@ -36,7 +36,9 @@ is closed or no map is loaded.
 ```
 
 - `id`: an integer, new for each request. The mod handles a request once: it skips an id it has
-  just handled and an id that already has a `result_<id>.xml`. The mod never deletes `request.xml`.
+  just handled and an id that already has a `result_<id>.xml`. The mod never deletes
+  `request.xml`; the editor deletes it with all other exchanged files (answers, cancel files,
+  tiles; all but `status.xml`) when a capture ends and before it writes a new request.
 - `type`: only `pictures` so far.
 - The mod checks `map` and `savegame` against the loaded game and answers `error` if they differ.
 - `pictures`: all attributes required.
