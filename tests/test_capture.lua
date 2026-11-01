@@ -34,7 +34,7 @@ local function request(n)
     for i = 1, n do
         table.insert(tiles, {col = i, row = 7, x = i * 500, z = -400})
     end
-    return {id = 17, pictures = {res = 2000, mode = "raw_alpha", altitude = 150, waitMs = 500,
+    return {id = 17, pictures = {res = 2000, mode = "raw", altitude = 150, waitMs = 500,
         firstWaitMs = 3000, tiles = tiles}}
 end
 
@@ -78,8 +78,8 @@ test("capture: tile files, markers and result", function()
     c:start()
     frame(c, game, 3)
     frame(c, game, 0.5)
-    eq(game.calls[4], "render ex/pictures_17/tile_1_7.png", "first png")
-    eq(game.calls[5], "marker ex/pictures_17/tile_1_7.done", "marker after png")
+    eq(game.calls[4], "render ex/pictures_17/tile_1_7.dds", "first picture")
+    eq(game.calls[5], "marker ex/pictures_17/tile_1_7.done", "marker after picture")
     eq(game.calls[#game.calls - 1], "restore", "restore before result")
     eq(game.calls[#game.calls], "result 17 done", "result")
     eq(c.status, "done", "status")

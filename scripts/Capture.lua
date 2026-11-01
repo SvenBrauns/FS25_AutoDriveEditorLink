@@ -1,7 +1,8 @@
 -- One picture capture: a state machine driven by update() each frame, no blocking waits.
 -- Waits are measured with now() (real time), not by adding up dt: the frame after a render has a
 -- dt of about a second, which would end the next wait at once.
--- Per tile: move the camera, wait, render the PNG, write the .done marker, check for cancel.
+-- Per tile: move the camera, wait, render an uncompressed DDS (~0.1 s; a PNG takes ~1.4 s to encode),
+-- write the .done marker, check for cancel.
 -- Everything that touches the game goes through `game` (AutoDriveEditorLink.lua; a fake in the tests):
 --   prepare(pictures)              hide HUD, light, distance factors, ortho camera
 --   moveCamera(x, z, altitude)     returns groundY
@@ -74,7 +75,7 @@ function ADELCapture:step()
     local tile = pictures.tiles[self.index]
     local name = string.format("tile_%d_%d", tile.col, tile.row)
     local renderStart = self.game:now()
-    if not self.game:render(self.folder .. name .. ".png", pictures.res, pictures.mode) then
+    if not self.game:render(self.folder .. name .. ".dds", pictures.res, pictures.mode) then
         error("renderScreenshot failed for " .. name, 0)
     end
     table.insert(self.done, {col = tile.col, row = tile.row, groundY = self.groundY,

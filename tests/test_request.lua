@@ -4,7 +4,7 @@ local function sample()
         ["request#format"] = "1", ["request#id"] = "17", ["request#type"] = "pictures",
         ["request#map"] = "FS25_Thueringen_2_0_16x.SampleModMap", ["request#savegame"] = "1",
         ["request.pictures#mPerPx"] = "0.25", ["request.pictures#res"] = "2000",
-        ["request.pictures#mode"] = "raw_alpha", ["request.pictures#altitude"] = "150",
+        ["request.pictures#mode"] = "raw", ["request.pictures#altitude"] = "150",
         ["request.pictures#waitMs"] = "500", ["request.pictures#firstWaitMs"] = "3000",
         ["request.pictures#dayTime"] = "12", ["request.pictures#weather"] = "SUN",
         ["request.pictures.tile(0)#col"] = "3", ["request.pictures.tile(0)#row"] = "7",
@@ -26,7 +26,7 @@ test("request: valid pictures request", function()
     local p = r.pictures
     eq(p.mPerPx, 0.25, "mPerPx")
     eq(p.res, 2000, "res")
-    eq(p.mode, "raw_alpha", "mode")
+    eq(p.mode, "raw", "mode")
     eq(p.altitude, 150, "altitude")
     eq(p.waitMs, 500, "waitMs")
     eq(p.firstWaitMs, 3000, "firstWaitMs")

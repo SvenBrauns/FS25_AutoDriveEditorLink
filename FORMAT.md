@@ -28,7 +28,7 @@ is closed or no map is loaded.
 
 ```xml
 <request format="1" id="17" type="pictures" map="FS25_Thueringen_2_0_16x.SampleModMap" savegame="1">
-  <pictures mPerPx="0.25" res="2000" mode="raw_alpha" altitude="150" waitMs="500"
+  <pictures mPerPx="0.25" res="2000" mode="raw" altitude="150" waitMs="500"
             firstWaitMs="3000" dayTime="12" weather="SUN">
     <tile col="3" row="7" x="-2346" z="-406"/>
   </pictures>
@@ -41,7 +41,7 @@ is closed or no map is loaded.
 - The mod checks `map` and `savegame` against the loaded game and answers `error` if they differ.
 - `pictures`: all attributes required.
   - `mPerPx`, `res`: the tile is `res` × `res` pixels and covers `res · mPerPx` metres.
-  - `mode`: `renderScreenshot` mode, `raw_alpha` (RGBA PNG).
+  - `mode`: `renderScreenshot` mode, `raw` (24-bit RGB; `raw_alpha` gives 32-bit RGBA).
   - `altitude`: camera height above the ground at the tile centre, m.
   - `firstWaitMs`, `waitMs`: real time between moving the camera and rendering, for the first and
     every further tile.
@@ -55,7 +55,8 @@ cancel and error.
 
 ## Per tile (mod)
 
-`pictures_<id>/tile_<col>_<row>.png`, then the empty marker `pictures_<id>/tile_<col>_<row>.done`.
+`pictures_<id>/tile_<col>_<row>.dds` (uncompressed DDS, 12 MB at 2000², readable with Pillow), then
+the empty marker `pictures_<id>/tile_<col>_<row>.done`.
 The editor deletes both after reading.
 
 ## cancel_<id> (editor)
