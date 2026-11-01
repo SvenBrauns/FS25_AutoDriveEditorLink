@@ -1,15 +1,29 @@
 -- FS25_AutoDriveEditorLink: the game side of the AutoDrive Editor's exchange folder (FORMAT.md).
 -- Each second: write status.xml, and when idle look for a new request.xml.
-AutoDriveEditorLink = {}
+-- adelReloadScripts runs this file again in the running game: the table and its state are kept,
+-- the functions replaced.
+AutoDriveEditorLink = AutoDriveEditorLink or {}
 local ADEL = AutoDriveEditorLink
-ADEL.modName = g_currentModName
+ADEL.modName = ADEL.modName or g_currentModName
+ADEL.modDir = ADEL.modDir or g_currentModDirectory
+ADEL.loads = (ADEL.loads or 0) + 1
 ADEL.dir = getUserProfileAppPath() .. "modSettings/FS25_AutoDriveEditorLink/"
 ADEL.FORMAT = "1"
 ADEL.POLL_MS = 1000
 -- Distance factors during a capture; adelCoeff changes them. Objects (buildings, trees, terrain) far and
 -- detailed; foliage off (0), else its LOD bands draw rings around the camera (they follow ground
 -- distance, so a higher camera does not help). The game menu allows 0.5-2.0; the engine takes less.
-ADEL.coeffs = {objects = 2.0, foliage = 0}
+ADEL.coeffs = ADEL.coeffs or {objects = 2.0, foliage = 0}
+-- In load order, as in modDesc.xml.
+local SCRIPTS = {"scripts/Request.lua", "scripts/Capture.lua", "scripts/AutoDriveEditorLink.lua"}
+-- Console commands: name, description, method, arguments.
+local COMMANDS = {
+    {"adelCoeff", "Distance factors for captures", "consoleCoeff", "objects; foliage"},
+    {"adelTestCapture", "Write a request for n x n picture tiles around x z", "consoleTestCapture",
+        "x; z; n; mPerPx; waitMs"},
+    {"adelTestReload", "Load a route file (routeExport) into the running game", "consoleTestReload", "path"},
+    {"adelReloadScripts", "Run the mod's scripts again (unzipped mod folder only)", "consoleReloadScripts", ""},
+}
 
 -- The game's graphics settings that decide how far things are drawn and in how much detail.
 local COEFFS = {
@@ -149,11 +163,7 @@ function ADEL:loadMap()
     local mod = g_modManager:getModByName(self.modName)
     self.modVersion = mod ~= nil and mod.version or "?"
     self.timer, self.revision = 0, 0
-    addConsoleCommand("adelCoeff", "Distance factors for captures", "consoleCoeff", self, "objects; foliage")
-    addConsoleCommand("adelTestCapture", "Write a request for n x n picture tiles around x z", "consoleTestCapture",
-        self, "x; z; n; mPerPx; waitMs")
-    addConsoleCommand("adelTestReload", "Load a route file (routeExport) into the running game", "consoleTestReload",
-        self, "path")
+    self:addConsoleCommands()
 end
 
 function ADEL:deleteMap()
@@ -161,9 +171,22 @@ function ADEL:deleteMap()
         self.capture:abort("map unloaded")
         self.capture = nil
     end
-    removeConsoleCommand("adelCoeff")
-    removeConsoleCommand("adelTestCapture")
-    removeConsoleCommand("adelTestReload")
+    self:removeConsoleCommands()
+end
+
+function ADEL:addConsoleCommands()
+    for _, command in ipairs(COMMANDS) do
+        addConsoleCommand(command[1], command[2], command[3], self, command[4])
+    end
+    self.commands = COMMANDS
+end
+
+-- Removes the commands added last, also those a reload dropped from the list.
+function ADEL:removeConsoleCommands()
+    for _, command in ipairs(self.commands or {}) do
+        removeConsoleCommand(command[1])
+    end
+    self.commands = nil
 end
 
 function ADEL:update(dt)
@@ -305,6 +328,27 @@ function ADEL:consoleTestReload(...)
         info.markers, info.groups, info.readSec, info.uploadSec)
 end
 
+-- Development: runs the scripts again from the mod folder, so changed functions apply without
+-- leaving the savegame. A zipped mod is read from the zip the game loaded, so edits need the folder.
+function ADEL:consoleReloadScripts()
+    if self.capture ~= nil then
+        return "AutoDriveEditorLink: not during a capture"
+    end
+    local before = self.loads
+    for _, file in ipairs(SCRIPTS) do
+        local ok, message = pcall(source, self.modDir .. file)
+        if not ok then
+            return string.format("AutoDriveEditorLink: %s failed: %s", file, tostring(message))
+        end
+    end
+    if self.loads == before then
+        return "AutoDriveEditorLink: the scripts did not run in the mod's environment, nothing changed"
+    end
+    self:removeConsoleCommands()
+    self:addConsoleCommands()
+    return "AutoDriveEditorLink: scripts reloaded from " .. self.modDir
+end
+
 function ADEL:consoleCoeff(objects, foliage)
     self.coeffs.objects = tonumber(objects) or self.coeffs.objects
     self.coeffs.foliage = tonumber(foliage) or self.coeffs.foliage
@@ -356,4 +400,6 @@ function ADEL:consoleTestCapture(x, z, n, mPerPx, waitMs)
     return string.format("AutoDriveEditorLink: request %d written (%d tiles)", id, i)
 end
 
-addModEventListener(ADEL)
+if ADEL.loads == 1 then
+    addModEventListener(ADEL)
+end

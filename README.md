@@ -14,6 +14,13 @@ Single player only.
 
 zips the mod into `Documents/My Games/FarmingSimulator2025/mods/FS25_AutoDriveEditorLink.zip`.
 
+For development, link the repository into the mods folder instead (game closed, no zip of the
+same name there), so the game reads the scripts from here and `adelReloadScripts` works:
+
+```powershell
+New-Item -ItemType Junction -Path "$HOME\Documents\My Games\FarmingSimulator2025\mods\FS25_AutoDriveEditorLink" -Target (Get-Location)
+```
+
 ## Tests
 
 Plain Lua 5.1 (the game's Lua version), from the repository root:
@@ -31,3 +38,6 @@ lua tests/run.lua
 - `adelTestReload <file>` loads an AutoDrive route file (root `routeExport`) into the running
   game, as the RoutesManager's import does. `<file>` is a full path or a file name in
   `modSettings/FS25_AutoDriveEditorLink/`.
+- `adelReloadScripts` runs the mod's scripts again from the linked folder: changed functions
+  apply without leaving the savegame. State (e.g. the status revision) is kept; not during a
+  capture. Changes to `loadMap` or modDesc.xml still need a savegame reload.

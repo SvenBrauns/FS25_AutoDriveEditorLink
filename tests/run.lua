@@ -17,6 +17,7 @@ end
 
 dofile("tests/test_request.lua")
 dofile("tests/test_capture.lua")
+dofile("tests/test_reload_scripts.lua")
 
 local failed = 0
 for _, t in ipairs(tests) do
