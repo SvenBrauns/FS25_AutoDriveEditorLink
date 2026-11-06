@@ -104,3 +104,32 @@ test("request: no tiles", function()
     eq(r, nil, "request")
     assert(message:find("tiles"), message)
 end)
+
+local function reloadSample()
+    return {
+        ["request#format"] = "1", ["request#id"] = "18", ["request#type"] = "reload",
+        ["request#map"] = "FS25_Thueringen_2_0_16x.SampleModMap", ["request#savegame"] = "1",
+        ["request.reload#file"] = "network_18.xml",
+    }
+end
+
+test("request: valid reload request", function()
+    local r = parse(reloadSample())
+    eq(r.type, "reload", "type")
+    eq(r.reload.file, "network_18.xml", "file")
+    eq(r.pictures, nil, "pictures")
+end)
+
+test("request: reload file must be a bare name in the exchange folder", function()
+    for _, file in ipairs({"", "../x.xml", "C:\\x.xml", "sub/x.xml", "sub\\x.xml"}) do
+        local keys = reloadSample()
+        keys["request.reload#file"] = file
+        local r, message, id = parse(keys)
+        eq(r, nil, file)
+        assert(message:find("file"), message)
+        eq(id, 18, "id")
+    end
+    local keys = reloadSample()
+    keys["request.reload#file"] = nil
+    eq(parse(keys), nil, "no file")
+end)

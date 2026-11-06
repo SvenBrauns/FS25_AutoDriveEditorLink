@@ -1,15 +1,29 @@
 -- FS25_AutoDriveEditorLink: the game side of the AutoDrive Editor's exchange folder (FORMAT.md).
 -- Each second: write status.xml, and when idle look for a new request.xml.
-AutoDriveEditorLink = {}
+-- adelReloadScripts runs this file again in the running game: the table and its state are kept,
+-- the functions replaced.
+AutoDriveEditorLink = AutoDriveEditorLink or {}
 local ADEL = AutoDriveEditorLink
-ADEL.modName = g_currentModName
+ADEL.modName = ADEL.modName or g_currentModName
+ADEL.modDir = ADEL.modDir or g_currentModDirectory
+ADEL.loads = (ADEL.loads or 0) + 1
 ADEL.dir = getUserProfileAppPath() .. "modSettings/FS25_AutoDriveEditorLink/"
 ADEL.FORMAT = "1"
 ADEL.POLL_MS = 1000
 -- Distance factors during a capture; adelCoeff changes them. Objects (buildings, trees, terrain) far and
 -- detailed; foliage off (0), else its LOD bands draw rings around the camera (they follow ground
 -- distance, so a higher camera does not help). The game menu allows 0.5-2.0; the engine takes less.
-ADEL.coeffs = {objects = 2.0, foliage = 0}
+ADEL.coeffs = ADEL.coeffs or {objects = 2.0, foliage = 0}
+-- In load order, as in modDesc.xml.
+local SCRIPTS = {"scripts/Request.lua", "scripts/Capture.lua", "scripts/AutoDriveEditorLink.lua"}
+-- Console commands: name, description, method, arguments.
+local COMMANDS = {
+    {"adelCoeff", "Distance factors for captures", "consoleCoeff", "objects; foliage"},
+    {"adelTestCapture", "Write a request for n x n picture tiles around x z", "consoleTestCapture",
+        "x; z; n; mPerPx; waitMs"},
+    {"adelTestReload", "Load a route file (routeExport) into the running game", "consoleTestReload", "path"},
+    {"adelReloadScripts", "Run the mod's scripts again (unzipped mod folder only)", "consoleReloadScripts", ""},
+}
 
 -- The game's graphics settings that decide how far things are drawn and in how much detail.
 local COEFFS = {
@@ -22,6 +36,37 @@ local COEFFS = {
 
 local function log(fmt, ...)
     print(string.format("AutoDriveEditorLink: " .. fmt, ...))
+end
+
+-- Name of the weather type now (e.g. SUN, RAIN), nil if the game does not tell.
+local function currentWeatherName(environment)
+    local ok, name = pcall(function()
+        local index = environment.weather:getCurrentWeatherType()
+        return g_weatherTypeManager:getWeatherTypeByIndex(index).name
+    end)
+    return ok and name or nil
+end
+
+-- After a capture: the old time plus the time the capture took, and the old weather type.
+-- Each part on its own, so a failing one does not keep the other from being restored.
+local function restoreTimeAndWeather(saved)
+    local environment = g_currentMission.environment
+    if saved.dayTime ~= nil and saved.setDayTime ~= nil then
+        local ok, err = pcall(function()
+            local dayTime = ADELCapture.restoredDayTime(saved.dayTime, saved.setDayTime, environment.dayTime)
+            environment:setEnvironmentTime(environment.currentMonotonicDay, environment.currentDay, dayTime,
+                environment.daysPerPeriod, false)
+        end)
+        if not ok then
+            log("time not restored: %s", tostring(err))
+        end
+    end
+    if saved.weather ~= nil then
+        local ok, err = pcall(environment.weather.consoleCommandWeatherSet, environment.weather, saved.weather)
+        if not ok then
+            log("weather not restored: %s", tostring(err))
+        end
+    end
 end
 
 -- The game for ADELCapture (see Capture.lua). `saved` holds what restore() puts back.
@@ -39,8 +84,12 @@ function Game:prepare(pictures)
         saved.coeffs[i] = coeff.get()
         coeff.set(ADEL.coeffs[coeff.kind])
     end
-    mission.environment:consoleCommandSetDayTime(pictures.dayTime)
-    mission.environment.weather:consoleCommandWeatherSet(pictures.weather)
+    local environment = mission.environment
+    saved.dayTime = environment.dayTime
+    saved.weather = currentWeatherName(environment)
+    environment:consoleCommandSetDayTime(pictures.dayTime)
+    environment.weather:consoleCommandWeatherSet(pictures.weather)
+    saved.setDayTime = environment.dayTime
 
     local cam = createCamera("AutoDriveEditorLinkCamera", math.rad(60), 1, pictures.altitude + 1000)
     saved.cam = cam
@@ -79,6 +128,7 @@ function Game:restore()
     if saved.hud ~= nil then
         g_currentMission.hud:setIsVisible(saved.hud)
     end
+    restoreTimeAndWeather(saved)
 end
 
 function Game:moveCamera(x, z, altitude)
@@ -117,12 +167,19 @@ function Game:now()
 end
 
 -- result_<id>.xml, then the empty result_<id>.done last.
-function Game:writeResult(id, status, message, tiles)
+function Game:writeResult(id, status, message, tiles, reload)
     local xml = createXMLFile("ADELResult", string.format("%sresult_%d.xml", ADEL.dir, id), "result")
     setXMLString(xml, "result#format", ADEL.FORMAT)
     setXMLInt(xml, "result#id", id)
     setXMLString(xml, "result#status", status)
     setXMLString(xml, "result#message", message)
+    if reload ~= nil then
+        setXMLInt(xml, "result.reload#nodes", reload.nodes)
+        setXMLInt(xml, "result.reload#markers", reload.markers)
+        setXMLInt(xml, "result.reload#groups", reload.groups)
+        setXMLFloat(xml, "result.reload#readSec", reload.readSec)
+        setXMLFloat(xml, "result.reload#uploadSec", reload.uploadSec)
+    end
     for i, tile in ipairs(tiles) do
         local key = string.format("result.tile(%d)", i - 1)
         setXMLInt(xml, key .. "#col", tile.col)
@@ -142,9 +199,7 @@ function ADEL:loadMap()
     local mod = g_modManager:getModByName(self.modName)
     self.modVersion = mod ~= nil and mod.version or "?"
     self.timer, self.revision = 0, 0
-    addConsoleCommand("adelCoeff", "Distance factors for captures", "consoleCoeff", self, "objects; foliage")
-    addConsoleCommand("adelTestCapture", "Write a request for n x n picture tiles around x z", "consoleTestCapture",
-        self, "x; z; n; mPerPx; waitMs")
+    self:addConsoleCommands()
 end
 
 function ADEL:deleteMap()
@@ -152,8 +207,22 @@ function ADEL:deleteMap()
         self.capture:abort("map unloaded")
         self.capture = nil
     end
-    removeConsoleCommand("adelCoeff")
-    removeConsoleCommand("adelTestCapture")
+    self:removeConsoleCommands()
+end
+
+function ADEL:addConsoleCommands()
+    for _, command in ipairs(COMMANDS) do
+        addConsoleCommand(command[1], command[2], command[3], self, command[4])
+    end
+    self.commands = COMMANDS
+end
+
+-- Removes the commands added last, also those a reload dropped from the list.
+function ADEL:removeConsoleCommands()
+    for _, command in ipairs(self.commands or {}) do
+        removeConsoleCommand(command[1])
+    end
+    self.commands = nil
 end
 
 function ADEL:update(dt)
@@ -230,9 +299,99 @@ function ADEL:checkRequest()
             tostring(info.savegameIndex)), {})
         return
     end
+    if request.type == "reload" then
+        local info, message = self:reload(self.dir .. request.reload.file)
+        Game:writeResult(id, info ~= nil and "done" or "error", message or "", {}, info)
+        return
+    end
     log("request %d: %d tiles", id, #request.pictures.tiles)
     self.capture = ADELCapture.new(Game, request, self.dir)
     self.capture:start()
+end
+
+-- Loads a route-format file (root routeExport) into the running game, as the RoutesManager's import
+-- does. AutoDrive's functions live in its mod environment FS25_AutoDrive. Returns counts and real
+-- times in seconds, or nil and an error message.
+function ADEL:reload(path)
+    local env = FS25_AutoDrive
+    if env == nil or env.AutoDrive == nil or env.AutoDriveRoutesUploadEvent == nil then
+        return nil, "AutoDrive not found"
+    end
+    if not fileExists(path) then
+        return nil, "file not found: " .. path
+    end
+    local start = getTimeSec()
+    local xml = loadXMLFile("ADELReload", path)
+    if xml == nil or xml == 0 then
+        return nil, "cannot read " .. path
+    end
+    local ok, wayPoints, mapMarkers, groups = pcall(env.AutoDrive.readGraphFromXml, xml, "routeExport")
+    delete(xml)
+    if not ok then
+        return nil, "cannot read the network: " .. tostring(wayPoints)
+    end
+    -- Counted before the upload: AutoDrive adds its debug markers to the same tables.
+    local info = {nodes = #wayPoints, markers = #mapMarkers, groups = 0, readSec = getTimeSec() - start}
+    for _ in pairs(groups) do
+        info.groups = info.groups + 1
+    end
+    local read = getTimeSec()
+    local sent, message = pcall(env.AutoDriveRoutesUploadEvent.sendEvent, wayPoints, mapMarkers, groups)
+    if not sent then
+        return nil, "upload failed: " .. tostring(message)
+    end
+    info.uploadSec = getTimeSec() - read
+    log("reloaded %s: %d nodes, %d markers, %d groups, read %.2f s, upload %.2f s", path, info.nodes, info.markers,
+        info.groups, info.readSec, info.uploadSec)
+    return info
+end
+
+-- Hand test without the editor. A bare file name is taken from the exchange folder. The console
+-- splits arguments at spaces ("My Games"), so they are joined again.
+function ADEL:consoleTestReload(...)
+    local path = table.concat({...}, " ")
+    if path == "" then
+        return "usage: adelTestReload <route file (routeExport): full path or a file name in the exchange folder>"
+    end
+    if not path:find("[/\\:]") then
+        path = self.dir .. path
+    end
+    local info, message = self:reload(path)
+    if info == nil then
+        return "AutoDriveEditorLink: reload failed: " .. message
+    end
+    return string.format("AutoDriveEditorLink: reloaded %d nodes, %d markers, %d groups in %.2f + %.2f s", info.nodes,
+        info.markers, info.groups, info.readSec, info.uploadSec)
+end
+
+-- Development: runs the scripts again from the mod folder, so changed functions apply without
+-- leaving the savegame. A zipped mod is read from the zip the game loaded, so edits need the folder.
+-- The engine runs each file path only once (a second source() of it does nothing), so each file is
+-- copied to a new name in the exchange folder, run from there and deleted.
+function ADEL:consoleReloadScripts()
+    if self.capture ~= nil then
+        return "AutoDriveEditorLink: not during a capture"
+    end
+    local env = getfenv(0)
+    local copyFile, deleteFile = env.copyFile or copyFile, env.deleteFile or deleteFile
+    local before = self.loads
+    self.reloadCount = (self.reloadCount or 0) + 1
+    for _, file in ipairs(SCRIPTS) do
+        local copy = string.format("%sreload%s_%d_%s", self.dir, getDate("%H%M%S"), self.reloadCount,
+            file:match("[^/]+$"))
+        copyFile(self.modDir .. file, copy, true)
+        local ok, message = pcall(source, copy)
+        deleteFile(copy)
+        if not ok then
+            return string.format("AutoDriveEditorLink: %s failed: %s", file, tostring(message))
+        end
+    end
+    if self.loads == before then
+        return "AutoDriveEditorLink: the scripts did not run again, see log.txt"
+    end
+    self:removeConsoleCommands()
+    self:addConsoleCommands()
+    return "AutoDriveEditorLink: scripts reloaded"
 end
 
 function ADEL:consoleCoeff(objects, foliage)
@@ -286,4 +445,6 @@ function ADEL:consoleTestCapture(x, z, n, mPerPx, waitMs)
     return string.format("AutoDriveEditorLink: request %d written (%d tiles)", id, i)
 end
 
-addModEventListener(ADEL)
+if ADEL.loads == 1 then
+    addModEventListener(ADEL)
+end

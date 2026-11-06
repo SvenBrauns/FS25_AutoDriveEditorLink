@@ -39,7 +39,7 @@ is closed or no map is loaded.
   just handled and an id that already has a `result_<id>.xml`. The mod never deletes
   `request.xml`; the editor deletes it with all other exchanged files (answers, cancel files,
   tiles; all but `status.xml`) when a capture ends and before it writes a new request.
-- `type`: only `pictures` so far.
+- `type`: `pictures` or `reload` (below).
 - The mod checks `map` and `savegame` against the loaded game and answers `error` if they differ.
 - `pictures`: all attributes required.
   - `mPerPx`, `res`: the tile is `res` × `res` pixels and covers `res · mPerPx` metres.
@@ -47,13 +47,29 @@ is closed or no map is loaded.
   - `altitude`: camera height above the ground at the tile centre, m.
   - `firstWaitMs`, `waitMs`: real time between moving the camera and rendering, for the first and
     every further tile.
-  - `dayTime` (hour), `weather` (`SUN`): set once at the start. They stay set after the capture.
+  - `dayTime` (hour), `weather` (`SUN`): set once at the start. At the end, also on cancel and
+    error, the mod sets the weather type back and the time to the old time plus the time the
+    capture took.
 - `tile`: grid cell `col`, `row` and its centre `x`, `z`. Rendered in the order given.
 
 During a capture the mod hides the HUD, sets the five distance factors to fixed values (object
 draw distance, LOD, terrain LOD: 2.0; foliage view and foliage LOD: 0, so foliage LOD bands do
 not draw rings around the camera), and puts camera, HUD and factors back at the end, also on
 cancel and error.
+
+### reload (proof of concept)
+
+```xml
+<request format="1" id="18" type="reload" map="FS25_Thueringen_2_0_16x.SampleModMap" savegame="1">
+  <reload file="network_18.xml"/>
+</request>
+```
+
+- `file`: a file name in the exchange folder (no path), an AutoDrive route file (root
+  `routeExport`, as the RoutesManager writes it). The editor writes it before the request.
+- The mod loads it into the running game as the RoutesManager's import does
+  (`AutoDrive.readGraphFromXml`, then `AutoDriveRoutesUploadEvent`): nodes, markers and groups
+  are replaced. It runs within one frame; no cancel.
 
 ## Per tile (mod)
 
@@ -76,3 +92,6 @@ The editor deletes it.
 
 - `status`: `done` | `cancelled` | `error`; `message` says why for `error`.
 - One `tile` per finished tile: ground height at the centre, real wait and render time in seconds.
+- For `reload`, when `done`:
+  `<reload nodes="113021" markers="54" groups="6" readSec="1.2" uploadSec="0.6"/>`, the counts
+  loaded and the real time for reading the file and replacing the network.
