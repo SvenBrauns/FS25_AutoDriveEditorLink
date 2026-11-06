@@ -1,0 +1,34 @@
+name: Release
+
+# Push a tag like v1.0.0 to test, build the mod zip and publish a release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update && sudo apt-get install -y lua5.1
+      - run: lua5.1 tests/run.lua
+
+      - name: Check the version and write the release notes
+        run: |
+          version="${VERSION#v}"
+          grep -q "<version>$version</version>" modDesc.xml || { echo "modDesc.xml does not say version $version"; exit 1; }
+          awk -v head="## $version" '$0 == head {found=1; next} found && /^## / {exit} found' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+
+      - name: Build
+        run: zip -X FS25_AutoDriveEditorLink.zip modDesc.xml icon_AutoDriveEditorLink.dds scripts/*.lua
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$VERSION" FS25_AutoDriveEditorLink.zip --title "$VERSION" --notes-file notes.md

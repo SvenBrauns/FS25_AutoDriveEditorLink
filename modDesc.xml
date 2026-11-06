@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="113">
     <author>Sven Brauns</author>
-    <version>0.1.0.0</version>
+    <version>1.0.0</version>
     <title><en>AutoDrive Editor Link</en><de>AutoDrive Editor Link</de></title>
     <description>
-        <en>Companion of the AutoDrive Editor: renders the map from above as picture tiles for the editor's map view. Talks to the editor through files in modSettings/FS25_AutoDriveEditorLink/.</en>
-        <de>Begleiter des AutoDrive Editors: rendert die Karte von oben als Bildkacheln für die Kartenansicht des Editors. Spricht mit dem Editor über Dateien in modSettings/FS25_AutoDriveEditorLink/.</de>
+        <en>Companion of the AutoDrive Editor: renders the map from above as a picture for the editor, and loads the network the editor saved into the running game. Talks to the editor through files in modSettings/FS25_AutoDriveEditorLink/.</en>
+        <de>Begleiter des AutoDrive Editors: rendert die Karte von oben als Bild für den Editor und lädt das vom Editor gespeicherte Netz ins laufende Spiel. Spricht mit dem Editor über Dateien in modSettings/FS25_AutoDriveEditorLink/.</de>
     </description>
     <iconFilename>icon_AutoDriveEditorLink.dds</iconFilename>
     <multiplayer supported="false"/>

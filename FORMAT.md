@@ -17,7 +17,7 @@ Both sides check `format`; a file with another format is not read ("please updat
 ## status.xml (mod, every second while a map is loaded)
 
 ```xml
-<status format="1" revision="812" modVersion="0.1.0.0" map="FS25_Thueringen_2_0_16x.SampleModMap"
+<status format="1" revision="812" modVersion="1.0.0" map="FS25_Thueringen_2_0_16x.SampleModMap"
         savegame="1" time="2026-11-01T14:03:22"/>
 ```
 
@@ -57,7 +57,7 @@ draw distance, LOD, terrain LOD: 2.0; foliage view and foliage LOD: 0, so foliag
 not draw rings around the camera), and puts camera, HUD and factors back at the end, also on
 cancel and error.
 
-### reload (proof of concept)
+### reload
 
 ```xml
 <request format="1" id="18" type="reload" map="FS25_Thueringen_2_0_16x.SampleModMap" savegame="1">
