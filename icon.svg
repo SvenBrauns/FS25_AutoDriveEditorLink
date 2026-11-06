@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3a52"/><stop offset="1" stop-color="#121a27"/></linearGradient></defs>
+  <rect x="12" y="12" width="232" height="232" rx="52" fill="url(#bg)"/>
+  <g stroke="#ffffff" stroke-opacity="0.07" stroke-width="3"><path d="M12 84H244M12 128H244M12 172H244M84 12V244M128 12V244M172 12V244"/></g>
+  <path d="M50 196L92 140L134 166L170 98" fill="none" stroke="#f0b04a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 196L92 140L134 166L170 98" fill="none" stroke="#121a27" stroke-width="3" stroke-dasharray="2 22" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#e53935" stroke="#121a27" stroke-width="5">
+    <circle cx="50" cy="196" r="17"/><circle cx="92" cy="140" r="14"/><circle cx="134" cy="166" r="14"/>
+  </g>
+  <path d="M170 50C150 50 136 64 136 82C136 100 155 114 170 136C185 114 204 100 204 82C204 64 190 50 170 50Z" fill="#1b4e8a" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="170" cy="82" r="13" fill="#7ec8ff"/>
+  <!-- link badge -->
+  <circle cx="188" cy="188" r="42" fill="#2e7d32" stroke="#ffffff" stroke-width="6"/>
+  <g fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round" transform="rotate(-45 188 188)">
+    <rect x="153" y="177" width="40" height="22" rx="11"/>
+    <rect x="183" y="177" width="40" height="22" rx="11"/>
+  </g>
+</svg>
