@@ -51,7 +51,11 @@ test("vehicles: after a reload targets and parking positions follow their marker
     local tool = vehicle("i", {attachable = true, attacher = tractor, park = 2})
     local markers = {[2] = 0, [3] = 2, [5] = 4}
 
-    local changed = ADELVehicles.moveMarkers({tractor, tool}, markers)
+    local old = ADELVehicles.readMarkers({tractor, tool})
+    -- The upload: AutoDrive points the targets to the marker on the same node id, here a wrong one.
+    tractor.ad.stateModule.firstMarker = marker(9)
+    tractor.ad.stateModule.secondMarker = marker(9)
+    local changed = ADELVehicles.moveMarkers(old, markers)
 
     eq(changed, 2, "changed")
     eq(tractor.advd.park, 4, "tractor park")
@@ -63,7 +67,7 @@ end)
 
 test("vehicles: unchanged markers still get the new marker objects", function()
     local tractor = vehicle("t", {drivable = true, first = 7})
-    ADELVehicles.moveMarkers({tractor}, {})
+    ADELVehicles.moveMarkers(ADELVehicles.readMarkers({tractor}), {})
     eq(tractor.ad.stateModule.firstMarker, marker(7), "first")
 end)
 

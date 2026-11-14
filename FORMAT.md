@@ -77,8 +77,9 @@ cancel and error.
   before, `new` its number in the file, `0` if it was deleted. Unlisted markers keep their number.
   After loading, the mod moves the vehicles' targets and parking positions (AutoDrive keeps them
   as marker numbers) along: a deleted target becomes marker 1, a deleted parking position none, as
-  when a marker is deleted in the game. The targets are set anew in any case, also without
-  `marker` entries, because the vehicles still hold the replaced markers.
+  when a marker is deleted in the game. The targets are read before the upload and set anew in
+  any case, also without `marker` entries: after the upload AutoDrive points them to the marker
+  on the same node id, and the editor's saved file has renumbered node ids.
 
 ### vehicles
 

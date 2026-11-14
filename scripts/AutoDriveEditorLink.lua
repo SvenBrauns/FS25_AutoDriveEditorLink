@@ -369,12 +369,16 @@ function ADEL:reload(path, markers)
         info.groups = info.groups + 1
     end
     local read = getTimeSec()
+    local ok, old = pcall(ADELVehicles.readMarkers, self:allVehicles())
+    if not ok then
+        return nil, "cannot read the vehicles' markers: " .. tostring(old)
+    end
     local sent, message = pcall(env.AutoDriveRoutesUploadEvent.sendEvent, wayPoints, mapMarkers, groups)
     if not sent then
         return nil, "upload failed: " .. tostring(message)
     end
     info.uploadSec = getTimeSec() - read
-    local moved, count = pcall(ADELVehicles.moveMarkers, self:allVehicles(), markers or {})
+    local moved, count = pcall(ADELVehicles.moveMarkers, old, markers or {})
     if not moved then
         return nil, "network loaded, but the vehicles' markers could not be moved: " .. tostring(count)
     end

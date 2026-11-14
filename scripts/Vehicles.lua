@@ -18,13 +18,9 @@ function ADELVehicles.remap(markers, number, deleted)
     return new == 0 and deleted or new
 end
 
--- After a reload, whose new marker list replaced the old one. markers: number before -> number now
--- (0: deleted), see FORMAT.md. The target markers are set anew in any case: the vehicles still hold
--- the old marker objects. A deleted target becomes marker 1 and a deleted parking position none,
--- as when a marker is deleted in the game. Returns the number of vehicles changed.
-function ADELVehicles.moveMarkers(vehicles, markers)
-    -- Read everything first: setting a vehicle's parking position also sets it as the job end
-    -- parking position of the vehicle it hangs on.
+-- The vehicles' marker numbers before a reload. Read before the upload: after it AutoDrive points
+-- the targets to the marker on the same node id, which the editor's renumbered nodes make wrong.
+function ADELVehicles.readMarkers(vehicles)
     local old = {}
     for _, vehicle in pairs(vehicles) do
         local entry = {}
@@ -39,7 +35,15 @@ function ADELVehicles.moveMarkers(vehicles, markers)
         end
         old[vehicle] = entry
     end
+    return old
+end
 
+-- After a reload, whose new marker list replaced the old one. old: from readMarkers before it;
+-- markers: number before -> number now (0: deleted), see FORMAT.md. The targets are set anew in
+-- any case. A deleted target becomes marker 1 and a deleted parking position none, as when a
+-- marker is deleted in the game. Parking positions are set first: setting one also sets the job
+-- end parking position of the vehicle it hangs on. Returns the number of parking positions moved.
+function ADELVehicles.moveMarkers(old, markers)
     local changed = 0
     for vehicle, entry in pairs(old) do
         local park = ADELVehicles.remap(markers, entry.park, -1)
