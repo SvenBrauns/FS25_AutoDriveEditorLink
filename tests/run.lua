@@ -1,6 +1,7 @@
 -- Plain-Lua tests (Lua 5.1, like the game). Run from the repository root: lua tests/run.lua
 dofile("scripts/Request.lua")
 dofile("scripts/Capture.lua")
+dofile("scripts/Vehicles.lua")
 
 local tests = {}
 
@@ -18,6 +19,7 @@ end
 dofile("tests/test_request.lua")
 dofile("tests/test_capture.lua")
 dofile("tests/test_reload_scripts.lua")
+dofile("tests/test_vehicles.lua")
 
 local failed = 0
 for _, t in ipairs(tests) do

@@ -3,6 +3,8 @@
 ADELRequest = {}
 ADELRequest.FORMAT = "1"
 
+ADELRequest.TYPES = {pictures = true, reload = true, vehicles = true, park = true}
+
 local NUMBERS = {"mPerPx", "res", "altitude", "waitMs", "firstWaitMs", "dayTime"}
 local STRINGS = {"mode", "weather"}
 
@@ -18,7 +20,7 @@ function ADELRequest.parse(get)
     end
     local request = {id = id, type = get("request#type"), map = get("request#map"),
         savegame = tonumber(get("request#savegame"))}
-    if request.type ~= "pictures" and request.type ~= "reload" then
+    if not ADELRequest.TYPES[request.type] then
         return nil, "unknown request type " .. tostring(request.type), id
     end
     if request.map == nil or request.savegame == nil then
@@ -30,7 +32,38 @@ function ADELRequest.parse(get)
         if file == nil or file == "" or file:find("[/\\:]") or file:find("%.%.") then
             return nil, "reload#file must be a file name in the exchange folder", id
         end
-        request.reload = {file = file}
+        -- Number in the game -> number in the file (0: deleted), for the vehicles' markers.
+        local markers = {}
+        local i = 0
+        while get(string.format("request.reload.marker(%d)#old", i)) ~= nil do
+            local key = string.format("request.reload.marker(%d)", i)
+            local old, new = tonumber(get(key .. "#old")), tonumber(get(key .. "#new"))
+            if old == nil or new == nil then
+                return nil, string.format("marker %d needs numbers old, new", i), id
+            end
+            markers[old] = new
+            i = i + 1
+        end
+        request.reload = {file = file, markers = markers}
+        return request
+    end
+    if request.type == "vehicles" then
+        return request
+    end
+    if request.type == "park" then
+        -- Unique id -> marker number (0: no parking position).
+        local parks = {}
+        local i = 0
+        while get(string.format("request.park.vehicle(%d)#uniqueId", i)) ~= nil do
+            local key = string.format("request.park.vehicle(%d)", i)
+            local marker = tonumber(get(key .. "#marker"))
+            if marker == nil then
+                return nil, string.format("vehicle %d needs a number marker", i), id
+            end
+            parks[get(key .. "#uniqueId")] = marker
+            i = i + 1
+        end
+        request.park = parks
         return request
     end
 

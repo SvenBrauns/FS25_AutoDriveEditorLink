@@ -10,7 +10,10 @@ Farming Simulator 25 mod, the game side of the [AutoDrive FS25 Editor](https://g
 - **Game picture.** Renders the map from above, tile by tile, so the editor can show the map as the
   game draws it: roads, yards, buildings and fields as they are in your savegame.
 - **Reload after saving.** When the editor saves the savegame the game is running, the mod loads
-  the new network into the game. AutoDrive drives on it right away, no restart needed.
+  the new network into the game. AutoDrive drives on it right away, no restart needed, and the
+  vehicles keep their targets and parking positions when markers were deleted.
+- **Vehicle parking positions.** Lists the vehicles and implements for the editor and sets their
+  parking markers in the running game.
 
 The editor and the mod talk only through files in
 `Documents/My Games/FarmingSimulator2025/modSettings/FS25_AutoDriveEditorLink/`.
