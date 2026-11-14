@@ -1,5 +1,10 @@
 # Version history
 
+## 1.1.0
+
+- Reload moves the vehicles' targets and parking positions to the renumbered markers, so deleting markers in the editor no longer mixes them up (`reload` request with `marker` entries)
+- Vehicles: lists the vehicles and implements with their parking position (`vehicles` request) and sets parking positions (`park` request)
+
 ## 1.0.0
 
 First release, for the AutoDrive FS25 Editor 2.0.0.

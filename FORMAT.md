@@ -39,7 +39,7 @@ is closed or no map is loaded.
   just handled and an id that already has a `result_<id>.xml`. The mod never deletes
   `request.xml`; the editor deletes it with all other exchanged files (answers, cancel files,
   tiles; all but `status.xml`) when a capture ends and before it writes a new request.
-- `type`: `pictures` or `reload` (below).
+- `type`: `pictures`, `reload`, `vehicles` or `park` (below).
 - The mod checks `map` and `savegame` against the loaded game and answers `error` if they differ.
 - `pictures`: all attributes required.
   - `mPerPx`, `res`: the tile is `res` × `res` pixels and covers `res · mPerPx` metres.
@@ -61,7 +61,10 @@ cancel and error.
 
 ```xml
 <request format="1" id="18" type="reload" map="FS25_Thueringen_2_0_16x.SampleModMap" savegame="1">
-  <reload file="network_18.xml"/>
+  <reload file="network_18.xml">
+    <marker old="2" new="0"/>
+    <marker old="3" new="2"/>
+  </reload>
 </request>
 ```
 
@@ -70,6 +73,36 @@ cancel and error.
 - The mod loads it into the running game as the RoutesManager's import does
   (`AutoDrive.readGraphFromXml`, then `AutoDriveRoutesUploadEvent`): nodes, markers and groups
   are replaced. It runs within one frame; no cancel.
+- `marker` (optional, any number): a marker whose number changes, `old` its number in the game
+  before, `new` its number in the file, `0` if it was deleted. Unlisted markers keep their number.
+  After loading, the mod moves the vehicles' targets and parking positions (AutoDrive keeps them
+  as marker numbers) along: a deleted target becomes marker 1, a deleted parking position none, as
+  when a marker is deleted in the game. The targets are set anew in any case, also without
+  `marker` entries, because the vehicles still hold the replaced markers.
+
+### vehicles
+
+```xml
+<request format="1" id="19" type="vehicles" map="…" savegame="1"/>
+```
+
+The vehicles AutoDrive can park: those of a farm (not trains) that AutoDrive drives or that can
+be attached (not pallets). See the result below.
+
+### park
+
+```xml
+<request format="1" id="20" type="park" map="…" savegame="1">
+  <park>
+    <vehicle uniqueId="vehicle494b759a0511842498a997124b755b10" marker="5"/>
+    <vehicle uniqueId="vehicle9105f3616605497b14f90e808c307416" marker="0"/>
+  </park>
+</request>
+```
+
+Sets the parking position of each vehicle to the marker number, `0` removes it, as AutoDrive's
+HUD does (`advd:setParkDestination`). The game saves it with its next save. Answers `error`
+naming the unique ids not found; the others are set.
 
 ## Per tile (mod)
 
@@ -94,4 +127,11 @@ The editor deletes it.
 - One `tile` per finished tile: ground height at the centre, real wait and render time in seconds.
 - For `reload`, when `done`:
   `<reload nodes="113021" markers="54" groups="6" readSec="1.2" uploadSec="0.6"/>`, the counts
-  loaded and the real time for reading the file and replacing the network.
+  loaded and the real time for reading the file and replacing the network; `vehicles` (since
+  1.1.0) the number of vehicles whose parking position moved.
+- For `vehicles`, when `done`, one element per vehicle:
+  `<vehicle uniqueId="vehicle…" filename="data/vehicles/fendt/vario1000/vario1000.xml"
+  name="Fendt 1000 Vario" driverName="Vario 1" attachedTo="vehicle…" park="5"/>`.
+  `filename` as in `vehicles.xml` (`data/…` or `$moddir$<mod>/…`), `name` brand and name,
+  `driverName` AutoDrive's driver name (empty for implements), `attachedTo` the unique id of the
+  vehicle it hangs on (empty if none), `park` the parking marker number (`-1`: none).

@@ -133,3 +133,38 @@ test("request: reload file must be a bare name in the exchange folder", function
     keys["request.reload#file"] = nil
     eq(parse(keys), nil, "no file")
 end)
+
+test("request: reload lists the markers that moved or went", function()
+    local keys = reloadSample()
+    keys["request.reload.marker(0)#old"] = "2"
+    keys["request.reload.marker(0)#new"] = "0"
+    keys["request.reload.marker(1)#old"] = "3"
+    keys["request.reload.marker(1)#new"] = "2"
+    local r = parse(keys)
+    eq(r.reload.markers[2], 0, "deleted")
+    eq(r.reload.markers[3], 2, "moved")
+    eq(r.reload.markers[1], nil, "unchanged")
+end)
+
+test("request: reload without markers moves nothing", function()
+    eq(next(parse(reloadSample()).reload.markers), nil, "markers")
+end)
+
+test("request: vehicles request needs nothing more", function()
+    local keys = reloadSample()
+    keys["request#type"] = "vehicles"
+    keys["request.reload#file"] = nil
+    eq(parse(keys).type, "vehicles", "type")
+end)
+
+test("request: park request maps unique ids to markers", function()
+    local keys = reloadSample()
+    keys["request#type"] = "park"
+    keys["request.park.vehicle(0)#uniqueId"] = "vehicleA"
+    keys["request.park.vehicle(0)#marker"] = "5"
+    keys["request.park.vehicle(1)#uniqueId"] = "vehicleB"
+    keys["request.park.vehicle(1)#marker"] = "0"
+    local r = parse(keys)
+    eq(r.park.vehicleA, 5, "A")
+    eq(r.park.vehicleB, 0, "B")
+end)

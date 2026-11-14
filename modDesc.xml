@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="113">
     <author>Sven Brauns</author>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <title><en>AutoDrive Editor Link</en><de>AutoDrive Editor Link</de></title>
     <description>
         <en>Companion of the AutoDrive Editor: renders the map from above as a picture for the editor, and loads the network the editor saved into the running game. Talks to the editor through files in modSettings/FS25_AutoDriveEditorLink/.</en>
@@ -12,6 +12,7 @@
     <extraSourceFiles>
         <sourceFile filename="scripts/Request.lua"/>
         <sourceFile filename="scripts/Capture.lua"/>
+        <sourceFile filename="scripts/Vehicles.lua"/>
         <sourceFile filename="scripts/AutoDriveEditorLink.lua"/>
     </extraSourceFiles>
 </modDesc>

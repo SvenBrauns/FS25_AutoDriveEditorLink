@@ -15,7 +15,7 @@ ADEL.POLL_MS = 1000
 -- distance, so a higher camera does not help). The game menu allows 0.5-2.0; the engine takes less.
 ADEL.coeffs = ADEL.coeffs or {objects = 2.0, foliage = 0}
 -- In load order, as in modDesc.xml.
-local SCRIPTS = {"scripts/Request.lua", "scripts/Capture.lua", "scripts/AutoDriveEditorLink.lua"}
+local SCRIPTS = {"scripts/Request.lua", "scripts/Capture.lua", "scripts/Vehicles.lua", "scripts/AutoDriveEditorLink.lua"}
 -- Console commands: name, description, method, arguments.
 local COMMANDS = {
     {"adelCoeff", "Distance factors for captures", "consoleCoeff", "objects; foliage"},
@@ -167,7 +167,7 @@ function Game:now()
 end
 
 -- result_<id>.xml, then the empty result_<id>.done last.
-function Game:writeResult(id, status, message, tiles, reload)
+function Game:writeResult(id, status, message, tiles, reload, vehicles)
     local xml = createXMLFile("ADELResult", string.format("%sresult_%d.xml", ADEL.dir, id), "result")
     setXMLString(xml, "result#format", ADEL.FORMAT)
     setXMLInt(xml, "result#id", id)
@@ -179,6 +179,16 @@ function Game:writeResult(id, status, message, tiles, reload)
         setXMLInt(xml, "result.reload#groups", reload.groups)
         setXMLFloat(xml, "result.reload#readSec", reload.readSec)
         setXMLFloat(xml, "result.reload#uploadSec", reload.uploadSec)
+        setXMLInt(xml, "result.reload#vehicles", reload.vehicles)
+    end
+    for i, vehicle in ipairs(vehicles or {}) do
+        local key = string.format("result.vehicle(%d)", i - 1)
+        setXMLString(xml, key .. "#uniqueId", vehicle.uniqueId)
+        setXMLString(xml, key .. "#filename", vehicle.filename)
+        setXMLString(xml, key .. "#name", vehicle.name)
+        setXMLString(xml, key .. "#driverName", vehicle.driverName)
+        setXMLString(xml, key .. "#attachedTo", vehicle.attachedTo)
+        setXMLInt(xml, key .. "#park", vehicle.park)
     end
     for i, tile in ipairs(tiles) do
         local key = string.format("result.tile(%d)", i - 1)
@@ -300,8 +310,20 @@ function ADEL:checkRequest()
         return
     end
     if request.type == "reload" then
-        local info, message = self:reload(self.dir .. request.reload.file)
+        local info, message = self:reload(self.dir .. request.reload.file, request.reload.markers)
         Game:writeResult(id, info ~= nil and "done" or "error", message or "", {}, info)
+        return
+    end
+    if request.type == "vehicles" then
+        local ok, list = pcall(ADELVehicles.list, self:allVehicles(), ADEL.vehicleFilename)
+        Game:writeResult(id, ok and "done" or "error", ok and "" or tostring(list), {}, nil, ok and list or nil)
+        return
+    end
+    if request.type == "park" then
+        local ok, count, missing = pcall(ADELVehicles.park, self:allVehicles(), request.park)
+        local message = not ok and tostring(count)
+            or #missing > 0 and "vehicles not found: " .. table.concat(missing, ", ") or ""
+        Game:writeResult(id, ok and #missing == 0 and "done" or "error", message, {})
         return
     end
     log("request %d: %d tiles", id, #request.pictures.tiles)
@@ -309,10 +331,21 @@ function ADEL:checkRequest()
     self.capture:start()
 end
 
+function ADEL:allVehicles()
+    return g_currentMission.vehicleSystem.vehicles
+end
+
+-- The vehicle XML as vehicles.xml names it: data/... or $moddir$<mod>/...
+function ADEL.vehicleFilename(vehicle)
+    local ok, name = pcall(NetworkUtil.convertToNetworkFilename, vehicle.configFileName)
+    return ok and name or vehicle.configFileName
+end
+
 -- Loads a route-format file (root routeExport) into the running game, as the RoutesManager's import
--- does. AutoDrive's functions live in its mod environment FS25_AutoDrive. Returns counts and real
--- times in seconds, or nil and an error message.
-function ADEL:reload(path)
+-- does. AutoDrive's functions live in its mod environment FS25_AutoDrive. markers (number before ->
+-- number now, 0: deleted) moves the vehicles' targets and parking positions along. Returns counts
+-- and real times in seconds, or nil and an error message.
+function ADEL:reload(path, markers)
     local env = FS25_AutoDrive
     if env == nil or env.AutoDrive == nil or env.AutoDriveRoutesUploadEvent == nil then
         return nil, "AutoDrive not found"
@@ -341,6 +374,11 @@ function ADEL:reload(path)
         return nil, "upload failed: " .. tostring(message)
     end
     info.uploadSec = getTimeSec() - read
+    local moved, count = pcall(ADELVehicles.moveMarkers, self:allVehicles(), markers or {})
+    if not moved then
+        return nil, "network loaded, but the vehicles' markers could not be moved: " .. tostring(count)
+    end
+    info.vehicles = count
     log("reloaded %s: %d nodes, %d markers, %d groups, read %.2f s, upload %.2f s", path, info.nodes, info.markers,
         info.groups, info.readSec, info.uploadSec)
     return info
